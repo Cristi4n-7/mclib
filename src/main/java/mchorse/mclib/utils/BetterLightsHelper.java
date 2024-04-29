@@ -17,10 +17,10 @@ public class BetterLightsHelper
         {
             try
             {
-                if (findBetterLightsClass())
-                {
-                    shadowPass.element = betterLightsClass.element.getDeclaredField("isDxShadowPass");
-                }
+                Class context = Class.forName("dz.betterlights.utils.BetterLightsContext");
+
+                shadowPass.element = context.getDeclaredField("isBlShadowPass");
+                shadowPass.element.setAccessible(true);
             }
             catch (Exception e)
             {}
