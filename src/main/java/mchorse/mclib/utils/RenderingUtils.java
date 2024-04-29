@@ -1,17 +1,18 @@
 package mchorse.mclib.utils;
 
+import mchorse.mclib.client.render.VertexBuilder;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.Entity;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
-import javax.vecmath.Matrix4d;
-import javax.vecmath.Matrix4f;
-import javax.vecmath.SingularMatrixException;
-import javax.vecmath.Vector3d;
-import javax.vecmath.Vector3f;
+import javax.annotation.Nullable;
+import javax.vecmath.*;
 import java.nio.FloatBuffer;
 
 public class RenderingUtils
@@ -117,8 +118,151 @@ public class RenderingUtils
 
     }
 
+    public static void renderCircle(Vector3d center, Vector3d normal, float radius, int divisions, Color color, float thickness)
+    {
+        renderCircleDotted(center, normal, radius, divisions, color, thickness, 0);
+    }
+
+    public static void renderCircleDotted(Vector3d center, Vector3d normal, float radius, int divisions, Color color, float thickness, int skipDivision)
+    {
+        Matrix3d rotation = new Matrix3d();
+        rotation.setIdentity();
+        Matrix3d transform = new Matrix3d();
+        transform.rotY(Math.toRadians(getYaw(normal)));
+        rotation.mul(transform);
+        transform.rotX(Math.toRadians(getPitch(normal)));
+        rotation.mul(transform);
+
+        GL11.glColor4f(color.r, color.g, color.b, color.a);
+        GL11.glLineWidth(thickness);
+        GL11.glBegin(GL11.GL_LINES);
+
+        for (int i = 1; i <= divisions; i += skipDivision + 1)
+        {
+            double angle0 = 2 * Math.PI / divisions * (i - 1);
+            double angle1 = 2 * Math.PI / divisions * i;
+
+            Vector3d a = new Vector3d(radius * Math.cos(angle0), radius * Math.sin(angle0), 0);
+            Vector3d b = new Vector3d(radius * Math.cos(angle1), radius * Math.sin(angle1), 0);
+            rotation.transform(a);
+            rotation.transform(b);
+            a.add(center);
+            b.add(center);
+
+            GL11.glVertex3d(a.x, a.y, a.z);
+            GL11.glVertex3d(b.x, b.y, b.z);
+        }
+
+        GL11.glEnd();
+    }
+
+    public static float getYaw(Vector3f direction)
+    {
+        return (float) getYaw(new Vector3d(direction));
+    }
+
+    public static float getPitch(Vector3f direction)
+    {
+        return (float) getPitch(new Vector3d(direction));
+    }
+
+    public static double getYaw(Vector3d direction)
+    {
+        double yaw = Math.atan2(-direction.x, direction.z);
+        yaw = Math.toDegrees(yaw);
+        if (yaw < -180)
+        {
+            yaw += 360;
+        }
+        else if (yaw > 180)
+        {
+            yaw -= 360;
+        }
+        return -yaw;
+    }
+
+    public static double getPitch(Vector3d direction)
+    {
+        double pitch = Math.atan2(direction.y, Math.sqrt(direction.x * direction.x + direction.z * direction.z));
+        return -Math.toDegrees(pitch);
+    }
+
+    public static void renderImage(ResourceLocation image, float scale)
+    {
+        renderImage(image, scale, new Color(1F, 1F, 1F, 1F));
+    }
+
+    public static void renderImage(ResourceLocation image, float scale, Color color)
+    {
+        Minecraft.getMinecraft().renderEngine.bindTexture(image);
+
+        boolean isCulling = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+
+        GlStateManager.alphaFunc(GL11.GL_GREATER, 0);
+        GlStateManager.enableAlpha();
+        GlStateManager.enableBlend();
+
+        if (ReflectionUtils.isOptifineShadowPass())
+        {
+            GlStateManager.disableCull();
+        }
+        else
+        {
+            GlStateManager.enableCull();
+        }
+
+        GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder buffer = tessellator.getBuffer();
+
+        GlStateManager.color(color.r, color.g, color.b, color.a);
+
+        buffer.begin(GL11.GL_QUADS, VertexBuilder.getFormat(false, true, false, true));
+
+        int perspective = Minecraft.getMinecraft().gameSettings.thirdPersonView;
+        float width = scale * (perspective == 2 ? -1 : 1) * 0.5F;
+        float height = scale * 0.5F;
+
+        /* Frontface */
+        buffer.pos(-width, height, 0.0F).tex(0, 0).normal(0.0F, 0.0F, 1.0F).endVertex();
+        buffer.pos(-width, -height, 0.0F).tex(0, 1).normal(0.0F, 0.0F, 1.0F).endVertex();
+        buffer.pos(width, -height, 0.0F).tex(1, 1).normal(0.0F, 0.0F, 1.0F).endVertex();
+        buffer.pos(width, height, 0.0F).tex(1, 0).normal(0.0F, 0.0F, 1.0F).endVertex();
+        /* backface */
+        buffer.pos(width,height, 0.0F).tex(1, 0).normal(0.0F, 0.0F, -1.0F).endVertex();
+        buffer.pos(width, -height, 0.0F).tex(1, 1).normal(0.0F, 0.0F, -1.0F).endVertex();
+        buffer.pos(-width, -height, 0.0F).tex(0, 1).normal(0.0F, 0.0F, -1.0F).endVertex();
+        buffer.pos(-width, height, 0.0F).tex(0, 0).normal(0.0F, 0.0F, -1.0F).endVertex();
+
+        tessellator.draw();
+
+        if (isCulling)
+        {
+            GlStateManager.enableCull();
+        }
+        else
+        {
+            GlStateManager.disableCull();
+        }
+
+        GlStateManager.disableBlend();
+        GlStateManager.disableAlpha();
+        GlStateManager.alphaFunc(GL11.GL_GREATER, 0.1F);
+    }
+
     public static Matrix4f getFacingRotation(Facing facing, Vector3f position)
     {
+        return getFacingRotation(facing, position, null);
+    }
+
+    public static Matrix4f getFacingRotation(Facing facing, Vector3f position, Vector3f direction)
+    {
+        if (facing.isDirection && direction == null)
+        {
+            throw new IllegalArgumentException("Argument direction cannot be null when the facing mode has isDirection=true");
+        }
+
         Entity camera = Minecraft.getMinecraft().getRenderViewEntity();
         float partialTicks = Minecraft.getMinecraft().getRenderPartialTicks();
         Matrix4f transform = new Matrix4f();
@@ -132,9 +276,7 @@ public class RenderingUtils
         double cY = Interpolations.lerp(camera.prevPosY, camera.posY, partialTicks) + camera.getEyeHeight();
         double cZ = Interpolations.lerp(camera.prevPosZ, camera.posZ, partialTicks);
 
-        boolean lookAt = facing == RenderingUtils.Facing.LOOKAT_XYZ || facing == RenderingUtils.Facing.LOOKAT_Y;
-
-        if (lookAt)
+        if (facing.isLookAt && !facing.isDirection)
         {
             double dX = cX - position.x;
             double dY = cY - position.y;
@@ -145,18 +287,73 @@ public class RenderingUtils
             cPitch = (float) (Math.toDegrees(MathHelper.atan2(dY, horizontalDistance)));
         }
 
-        if (facing == RenderingUtils.Facing.LOOKAT_XYZ || facing == RenderingUtils.Facing.ROTATE_XYZ)
+        if (facing.isDirection)
         {
-            rotation.rotX((float) Math.toRadians(cPitch));
-            transform.mul(rotation);
-            rotation.rotY((float) Math.toRadians(180 - cYaw));
-            transform.mul(rotation);
-
+            double lengthSq = direction.lengthSquared();
+            if (lengthSq < 0.0001)
+            {
+                direction.set(1, 0, 0);
+            }
+            else if (Math.abs(lengthSq - 1) > 0.0001)
+            {
+                direction.normalize();
+            }
         }
-        else if (facing == RenderingUtils.Facing.ROTATE_Y || facing == RenderingUtils.Facing.LOOKAT_Y)
+
+        switch (facing)
         {
-            rotation.rotY((float) Math.toRadians(180 - cYaw));
-            transform.mul(rotation);
+            case LOOKAT_XYZ:
+            case ROTATE_XYZ:
+                rotation.rotX((float) Math.toRadians(cPitch));
+                transform.mul(rotation);
+                rotation.rotY((float) Math.toRadians(180 - cYaw));
+                transform.mul(rotation);
+                break;
+            case ROTATE_Y:
+            case LOOKAT_Y:
+                rotation.rotY((float) Math.toRadians(180 - cYaw));
+                transform.mul(rotation);
+                break;
+            case LOOKAT_DIRECTION:
+                rotation.setIdentity();
+                rotation.rotY((float) Math.toRadians(getYaw(direction)));
+                transform.mul(rotation);
+                rotation.rotX((float) Math.toRadians(getPitch(direction) + 90));
+                transform.mul(rotation);
+
+                Vector3f cameraDir = new Vector3f(
+                        (float) (cX - position.x),
+                        (float) (cY - position.y),
+                        (float) (cZ - position.z));
+
+                Vector3f rotatedNormal = new Vector3f(0,0,1);
+
+                transform.transform(rotatedNormal);
+
+                /*
+                 * The direction vector is the normal of the plane used for calculating the rotation around local y Axis.
+                 * Project the cameraDir onto that plane to find out the axis angle (direction vector is the y axis).
+                 */
+                Vector3f projectDir = new Vector3f(direction);
+                projectDir.scale(cameraDir.dot(direction));
+                cameraDir.sub(projectDir);
+
+                if (cameraDir.lengthSquared() < 1.0e-30) break;
+
+                cameraDir.normalize();
+
+                /*
+                 * The angle between two vectors is only between 0 and 180 degrees.
+                 * RotationDirection will be parallel to direction but pointing in different directions depending
+                 * on the rotation of cameraDir. Use this to find out the sign of the angle
+                 * between cameraDir and the rotatedNormal.
+                 */
+                Vector3f rotationDirection = new Vector3f();
+                rotationDirection.cross(cameraDir, rotatedNormal);
+
+                rotation.rotY(-Math.copySign(cameraDir.angle(rotatedNormal), rotationDirection.dot(direction)));
+                transform.mul(rotation);
+                break;
         }
 
         return transform;
@@ -166,22 +363,31 @@ public class RenderingUtils
      * This method multiples the openGL matrix stack with a rotation matrix
      * according to the facing parameter
      */
-    public static void glFacingRotation(Facing facing, Vector3f position)
+    public static void glFacingRotation(Facing facing, Vector3f position, Vector3f direction)
     {
         matrixBuffer.clear();
-        MatrixUtils.matrixToFloatBuffer(matrixBuffer, getFacingRotation(facing, position));
+        MatrixUtils.matrixToFloatBuffer(matrixBuffer, getFacingRotation(facing, position, direction));
 
         GL11.glMultMatrix(matrixBuffer);
+    }
+
+    public static void glFacingRotation(Facing facing, Vector3f position)
+    {
+        glFacingRotation(facing, position, null);
     }
 
     public enum Facing
     {
         ROTATE_XYZ("rotate_xyz"),
         ROTATE_Y("rotate_y"),
-        LOOKAT_XYZ("lookat_xyz"),
-        LOOKAT_Y("lookat_y");
+        LOOKAT_XYZ("lookat_xyz", true, false),
+        LOOKAT_Y("lookat_y", true, false),
+        LOOKAT_DIRECTION("lookat_direction", true, true);
+
 
         public final String id;
+        public final boolean isLookAt;
+        public final boolean isDirection;
 
         public static Facing fromString(String string)
         {
@@ -196,9 +402,16 @@ public class RenderingUtils
             return null;
         }
 
-        Facing(String id)
+        Facing(String id, boolean isLookAt, boolean isDirection)
         {
             this.id = id;
+            this.isLookAt = isLookAt;
+            this.isDirection = isDirection;
+        }
+
+        Facing(String id)
+        {
+            this(id, false, false);
         }
     }
 }
