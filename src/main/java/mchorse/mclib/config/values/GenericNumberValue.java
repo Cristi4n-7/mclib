@@ -43,6 +43,21 @@ public abstract class GenericNumberValue<T extends Number & Comparable<T>> exten
         this.reset();
     }
 
+    @Override
+    public void setValue(Object value)
+    {
+        if (value == null)
+        {
+            return;
+        }
+
+        if (value instanceof Number) {
+            this.set(this.numberToValue((Number) value));
+        }
+    }
+
+    protected abstract T numberToValue(Number number);
+
     /**
      * The value will be clamped between {@link #min} and {@link #max}
      * @param value

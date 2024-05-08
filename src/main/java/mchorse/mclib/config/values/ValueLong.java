@@ -58,6 +58,11 @@ public class ValueLong extends GenericNumberValue<Long> implements IServerValue,
     }
 
     @Override
+    protected Long numberToValue(Number number) {
+        return number.longValue();
+    }
+
+    @Override
     @SideOnly(Side.CLIENT)
     public List<GuiElement> getFields(Minecraft mc, GuiConfigPanel gui)
     {

@@ -51,6 +51,11 @@ public class ValueInt extends GenericNumberValue<Integer> implements IServerValu
         this.set(ColorUtils.parseColor(value));
     }
 
+    @Override
+    protected Integer numberToValue(Number number) {
+        return number.intValue();
+    }
+
     public Subtype getSubtype()
     {
         return this.subtype;

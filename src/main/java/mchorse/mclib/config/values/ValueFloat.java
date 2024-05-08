@@ -48,6 +48,11 @@ public class ValueFloat extends GenericNumberValue<Float> implements IServerValu
         return 0F;
     }
 
+    @Override
+    protected Float numberToValue(Number number) {
+        return number.floatValue();
+    }
+
     public boolean isInteger()
     {
         return false;

@@ -48,6 +48,11 @@ public class ValueDouble extends GenericNumberValue<Double> implements IServerVa
         return 0D;
     }
 
+    @Override
+    protected Double numberToValue(Number number) {
+        return number.doubleValue();
+    }
+
     public boolean isInteger()
     {
         return false;

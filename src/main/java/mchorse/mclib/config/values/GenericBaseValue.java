@@ -134,7 +134,9 @@ public abstract class GenericBaseValue<T> extends Value
             this.set((T) value);
         }
         catch(ClassCastException e)
-        { }
+        {
+            e.printStackTrace();
+        }
     }
 
     /**
