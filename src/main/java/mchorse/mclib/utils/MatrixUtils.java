@@ -379,6 +379,36 @@ public class MatrixUtils
         return new Matrix4d[]{translation, rotation, scale};
     }
 
+    public static Transformation getTransformation(Matrix4d transform)
+    {
+        Matrix4d translation = new Matrix4d();
+        Matrix4d rotation = new Matrix4d();
+        Matrix4d scale = new Matrix4d();
+
+        translation.setIdentity();
+        rotation.setIdentity();
+        scale.setIdentity();
+
+        Vector4d rx = new Vector4d(transform.m00, transform.m10, transform.m20, 0);
+        Vector4d ry = new Vector4d(transform.m01, transform.m11, transform.m21, 0);
+        Vector4d rz = new Vector4d(transform.m02, transform.m12, transform.m22, 0);
+
+        rx.normalize();
+        ry.normalize();
+        rz.normalize();
+        rotation.setRow(0, rx);
+        rotation.setRow(1, ry);
+        rotation.setRow(2, rz);
+
+        translation.setTranslation(new Vector3d(transform.m03, transform.m13, transform.m23));
+
+        scale.m00 = Math.sqrt(transform.m00 * transform.m00 + transform.m10 * transform.m10 + transform.m20 * transform.m20);
+        scale.m11 = Math.sqrt(transform.m01 * transform.m01 + transform.m11 * transform.m11 + transform.m21 * transform.m21);
+        scale.m22 = Math.sqrt(transform.m02 * transform.m02 + transform.m12 * transform.m12 + transform.m22 * transform.m22);
+
+        return new Transformation(translation, rotation, scale);
+    }
+
 
     /**
      * This method extracts the rotation, translation and scale from the modelview matrix. It needs the view matrix to work properly
@@ -476,6 +506,13 @@ public class MatrixUtils
         private Exception creationException = null;
 
         public Transformation(Matrix4f translation, Matrix4f rotation, Matrix4f scale)
+        {
+            this.translation.set(translation);
+            this.rotation.set(rotation);
+            this.scale.set(scale);
+        }
+
+        public Transformation(Matrix4d translation, Matrix4d rotation, Matrix4d scale)
         {
             this.translation.set(translation);
             this.rotation.set(rotation);

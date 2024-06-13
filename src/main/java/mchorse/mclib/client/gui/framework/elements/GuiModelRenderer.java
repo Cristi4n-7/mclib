@@ -5,6 +5,7 @@ import mchorse.mclib.client.gui.framework.elements.utils.GuiContext;
 import mchorse.mclib.client.gui.framework.elements.utils.GuiDraw;
 import mchorse.mclib.utils.DummyEntity;
 import mchorse.mclib.utils.MathUtils;
+import mchorse.mclib.utils.MatrixUtils;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -24,6 +25,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.Project;
 
 import javax.vecmath.Matrix3d;
+import javax.vecmath.Matrix4d;
 import javax.vecmath.Vector3d;
 import javax.vecmath.Vector3f;
 import java.nio.ByteBuffer;
@@ -39,6 +41,7 @@ public abstract class GuiModelRenderer extends GuiElement
     private static boolean rendering;
     private static Vector3d vec = new Vector3d();
     private static Matrix3d mat = new Matrix3d();
+    protected Matrix4d cameraMatrix = new Matrix4d();
 
     protected EntityLivingBase entity;
     protected IBlockState block = Blocks.GRASS.getDefaultState();
@@ -97,6 +100,11 @@ public abstract class GuiModelRenderer extends GuiElement
         this.entity.renderYawOffset = this.entity.prevRenderYawOffset = 0.0F;
         this.entity.onGround = true;
         this.reset();
+    }
+
+    public Matrix4d getCameraMatrix()
+    {
+        return new Matrix4d(this.cameraMatrix);
     }
 
     public GuiModelRenderer picker(Consumer<String> callback)
@@ -316,6 +324,7 @@ public abstract class GuiModelRenderer extends GuiElement
         GlStateManager.rotate(this.pitch, 1.0F, 0.0F, 0.0F);
         GlStateManager.rotate(this.yaw, 0.0F, 1.0F, 0.0F);
         GlStateManager.translate(-this.temp.x, -this.temp.y, -this.temp.z);
+        this.cameraMatrix = MatrixUtils.readModelViewDouble();
 
         /* Custom render settings */
         if (this.hideModel)
